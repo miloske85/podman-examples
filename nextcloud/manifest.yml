@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql_environment
+data:
+  MYSQL_ROOT_PASSWORD: strong_password
+  MYSQL_DATABASE: nextcloud
+  MYSQL_USER: nextcloud
+  MYSQL_PASSWORD: nextcloud
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextcloud_environment
+data:
+  MYSQL_PASSWORD: nextcloud
+  MYSQL_DATABASE: nextcloud
+  MYSQL_USER: nextcloud
+  MYSQL_HOST: nextcloud_db
+
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nextcloud
+spec:
+  securityContext:
+    seLinuxOptions:
+      type: spc_t
+
+  containers:
+    - name: nextcloud_db
+      image: docker.io/library/mariadb:latest
+      ports:
+        - containerPort: 3306
+      envFrom:
+        - configMapRef:
+            name: mysql_environment
+      volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: nextcloud_db
+
+    - name: nextcloud_app
+      image: docker.io/library/nextcloud:latest
+      ports:
+        - containerPort: 80
+          hostPort: 8080
+      enfFrom:
+        - configMapRef:
+            name: nextcloud_environment
+      volumeMounts:
+        - mountPath: /var/www/html
+          name: nextcloud_nextcloud
+        - mountPath: /var/www/html/custom_apps
+          name: nextcloud_apps
+        - mountPath: /var/www/html/config
+          name: nextcloud_config
+        - mountPath: /var/www/html/data
+          name: nextcloud_data
+
+#  dnsPolicy: "None"  # Set to None to use custom DNS settings
+#  dnsConfig:
+#    nameservers:
+#      - 9.9.9.9
+
+  volumes:
+    - name: nextcloud_db
+      hostPath:
+        path: /home/user/data/nextcloud/db
+        type: Directory
+    - name: nextcloud_apps
+      hostPath:
+        path: /home/user/data/nextcloud/apps
+        type: Directory
+    - name: nextcloud_config
+      hostPath:
+        path: /home/user/data/nextcloud/config
+        type: Directory
+    - name: nextcloud_data
+      hostPath:
+        path: /home/user/data/nextcloud/data
+        type: Directory
+    - name: nextcloud_nextcloud
+      hostPath:
+        path: /home/user/data/nextcloud/nextcloud
+        type: Directory
+#    - name: nextcloud_theme
+#      hostPath:
+#        path: /home/user/data/nextcloud/theme
+#        type: Directory
+
